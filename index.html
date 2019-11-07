@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<style>
+    .state{
+        fill: none;
+        stroke: #a9a9a9;
+        stroke-width: 1;
+    }
+    .state:hover{
+        fill-opacity:0.5;
+    }
+    #tooltip {
+        position: absolute;
+        text-align: center;
+        padding: 20px;
+        margin: 10px;
+        font: 12px sans-serif;
+        background: lightsteelblue;
+        border: 1px;
+        border-radius: 2px;
+        pointer-events: none;
+    }
+    #tooltip h4{
+        margin:0;
+        font-size:14px;
+    }
+    #tooltip{
+        background:rgba(0,0,0,0.9);
+        border:1px solid grey;
+        border-radius:5px;
+        font-size:12px;
+        width:auto;
+        padding:4px;
+        color:white;
+        opacity:0;
+    }
+    #tooltip table{
+        table-layout:fixed;
+    }
+    #tooltip tr td{
+        padding:0;
+        margin:0;
+    }
+    #tooltip tr td:nth-child(1){
+        width:80px;
+    }
+    #tooltip tr td:nth-child(2){
+        text-align:center;
+    }
+</style><!--tooltip格式-->
+<body>
+<div id="tooltip"></div><!-- div to hold tooltip. -->
+<svg width="560" height="470" id="statesvg"></svg> <!-- svg to hold the map. -->
+<script src="china-zh2.js"></script> <!-- creates uStates. -->
+<script type="text/javascript" src="http://d3js.org/d3.v3.min.js">
+</script>
+<script>
+    function toPercent(point){
+        var str=Number(point*100).toFixed(1);
+        str+="%";
+        return str;
+    }<!--convert to percentage-->
+    function tooltipHtml(n, d){	/* function to create html content string in tooltip div. */
+        return "<h4>"+n+"</h4><table>"+
+            "<tr><td>入选项目总数</td><td>"+(d.num)+"</td></tr>"+
+            "<tr><td>金额（万元）</td><td>"+(d.capital)+"</td></tr>"+
+            "<tr><td>数理科学部</td><td>"+toPercent(d.m_p)+"</td></tr>"+
+            "<tr><td>化学科学部</td><td>"+toPercent(d.c_)+"</td></tr>"+
+            "<tr><td>生命科学部</td><td>"+toPercent(d.l_)+"</td></tr>"+
+            "<tr><td>地球科学部</td><td>"+toPercent(d.e_)+"</td></tr>"+
+            "<tr><td>工程与材料科学部</td><td>"+toPercent(d.E_M)+"</td></tr>"+
+            "<tr><td>信息科学部</td><td>"+toPercent(d.I_)+"</td></tr>"+
+            "<tr><td>管理科学部</td><td>"+toPercent(d.M_)+"</td></tr>"+
+            "<tr><td>医学科学部</td><td>"+toPercent(d.me_)+"</td></tr>"+
+            "</table>";
+    }
+    var sampleData ={};
+    var  d_color =[20,17,12,10,10,9,8,7,7,6,6,6,6,4,4,4,3,3,2,2,2,2,2,0,0,0,0,0,0,0,0,0,0,0],
+        sum_of_capital = [24010,8085,5845,3850,3850,2800,2450,2100,1995,1750,1750,1750,1750,1050,1050,1050,700,700,350,350,350,350,350,0,0,0,0,0,0,0,0,0,0,0],
+        num_projects = [71,24,17,11,11,8,7,6,6,5,5,5,5,3,3,3,2,2,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0],
+        m_p_div = [16/71,3/24,2/17,0,0,0,0,0,1/6,2/5,0,1/5,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+        c_div = [8/71,3/24,3/17,1/11,3/11,0,0,0,2/6,1/5,0,2/5,1/5,0,1/3,1/3,1,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+        l_div = [8/71,6/24,1/17,2/11,1/11,1/8,0,1/6,0,0,1/5,0,1/5,1/3,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0],
+        e_div =[8/71,0,2/17,2/11,3/11,0,1/7,1/6,1/6,2/5,0,0,0,0,0,0,0,1/2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+        E_M_div=[8/71,4/24,3/17,3/11,1/11,4/8,2/7,3/6,2/6,0,4/5,1/5,1/5,1/3,0,1/3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+        I_div = [9/71,1/24,4/17,2/11,1/11,0,4/7,1/6,0,0,0,1/5,1/5,1/3,2/3,1/3,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0],
+        M_div = [4/71,2/24,1/17,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+        me_div = [10/71,5/24,1/17,1/11,2/11,3/8,0,0,0,0,0,0,1/5,0,0,0,0,1/2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0];
+    ['BEJ','SHH','JSU',"HUB",'GUD','TAJ','SHA','ZHJ','ANH','GAN','HLJ','LIA','SCH','CHQ','JIL','HUN','FUJ','SHD','SHX','HEN','JXI','HAI','HEB','MAC','NXA','GXI','HKG','YUN','XIN','QIH','TIB','GUI','TAI','NMG']
+        .forEach(function(d,i){
+           var cap=sum_of_capital[i],
+                low=d_color[i],
+                num = num_projects[i],
+               m_p=m_p_div[i],
+               c_= c_div[i],
+               l_=l_div[i],
+               e_=e_div[i],
+               E_M=E_M_div[i],
+               I_=I_div[i],
+               M_=M_div[i],
+               me_=me_div[i];
+            sampleData[d]={num:num,m_p:m_p,
+                c_:c_,l_:l_,
+                e_:e_,E_M:E_M,
+                I_:I_,M_:M_,
+                me_:me_,capital:cap,
+                color:d3.interpolate("#ECF5FF", "#000079")((low)/30)};
+        });
+
+    /* draw states on id #statesvg */
+    uStates.draw("#statesvg", sampleData, tooltipHtml);
+    var sum_data = [8120,10500,8750,7350,13300,10150,1715,8400]
+</script><!--中国地图,需加入比例尺-->
+<script>
+    var width = 400,
+        height = 400;
+    var data = [8120,10500,8750,7350,13300,10150,1715,8400],
+        name = ["数理科学部","化学科学部","生命科学部","地球科学部","工程与材料科学部","信息科学部","管理科学部","医学科学部"];
+    var pie = d3.layout.pie().sort(null);
+    var color = d3.scale.ordinal().range(["rgb(255, 94, 99)","rgb(210, 62, 167)", "rgb(110, 64, 170)", "rgb(65, 125, 224)", "rgb(239, 167, 47)", "rgb(175, 240, 91)", "rgb(26, 199, 194)", "rgb(64, 243, 115)"]);
+    var svg = d3.select("body").append("svg").attr("width", width + 600).attr("height", height + 100);
+    //定义外半径
+    var outerRadius = width / 2;
+    //定义内半径
+    var innerRadius = width / 4;
+    //定义路径
+    var arc3 = d3.svg.arc()
+        .innerRadius(innerRadius)
+        .outerRadius(outerRadius);
+
+    //定义了另一种路径函数
+    var arc2 = d3.svg.arc()
+        .innerRadius(innerRadius - 10)
+        .outerRadius(outerRadius + 20)
+
+   svg.append("rect").attr("width", 18)
+       .attr("height", 18)
+       .attr("x", 300)
+       .attr("y", 40)
+       .style("fill", "rgb(255, 94, 99)")
+    svg.append("text")
+        .attr("x", 360)
+        .attr("y", 55)
+       .style("text-anchor", "middle")
+       .text("数理科学部");
+
+    svg.append("rect").attr("width", 18)
+        .attr("height", 18)
+        .attr("x", 300)
+        .attr("y", 60)
+        .style("fill", "rgb(210, 62, 167)")
+    svg.append("text")
+        .attr("x", 360)
+        .attr("y", 75)
+        .style("text-anchor", "middle")
+        .text("化学科学部");
+
+    svg.append("rect").attr("width", 18)
+        .attr("height", 18)
+        .attr("x", 300)
+        .attr("y", 80)
+        .style("fill", "rgb(110, 64, 170)")
+    svg.append("text")
+        .attr("x", 360)
+        .attr("y", 95)
+        .style("text-anchor", "middle")
+        .text("生命科学部");
+
+    svg.append("rect").attr("width", 18)
+        .attr("height", 18)
+        .attr("x", 300)
+        .attr("y", 100)
+        .style("fill", "rgb(65, 125, 224)")
+    svg.append("text")
+        .attr("x", 360)
+        .attr("y", 115)
+        .style("text-anchor", "middle")
+        .text("地球科学部");
+
+    svg.append("rect").attr("width", 18)
+        .attr("height", 18)
+        .attr("x", 300)
+        .attr("y", 120)
+        .style("fill","rgb(239, 167, 47)")
+    svg.append("text")
+        .attr("x", 385)
+        .attr("y", 135)
+        .style("text-anchor", "middle")
+        .text("工程与材料科学部");
+
+    svg.append("rect").attr("width", 18)
+        .attr("height", 18)
+        .attr("x", 300)
+        .attr("y", 140)
+        .style("fill", "rgb(175, 240, 91)")
+    svg.append("text")
+        .attr("x", 360)
+        .attr("y", 155)
+        .style("text-anchor", "middle")
+        .text("信息科学部");
+
+    svg.append("rect").attr("width", 18)
+        .attr("height", 18)
+        .attr("x", 300)
+        .attr("y", 160)
+        .style("fill", "rgb(64, 243, 115)")
+    svg.append("text")
+        .attr("x", 360)
+        .attr("y", 175)
+        .style("text-anchor", "middle")
+        .text("管理科学部");
+
+    svg.append("rect").attr("width", 18)
+        .attr("height", 18)
+        .attr("x", 300)
+        .attr("y", 180)
+        .style("fill", "rgb(26, 199, 194)")
+    svg.append("text")
+        .attr("x", 360)
+        .attr("y", 195)
+        .style("text-anchor", "middle")
+        .text("医学科学部");
+
+    function toHtml(d){	/* function to create html content string in tooltip div. */
+        return "<table>"+
+            "<tr><td>占比</td><td>"+toPercent(d.value/68285)+"</td></tr>"+
+            "<tr><td>获资（万元）</td><td>"+d.value+"</td></tr>"+
+            "</table>";
+    }
+
+    var arcs = svg.selectAll("g")
+        .data(pie(data))
+        .enter()
+        .append("g")
+        // 将饼图中心(SVG起点)移至中间
+        .attr("transform", "translate(" + (outerRadius+560)  + "," + (outerRadius+60) + ")")
+        //为每一块元素添加鼠标事件
+        .on("mouseover", function(d) {
+
+            d3.select(this).select("path").transition().attr("d", function(d) {
+                console.log(d);
+                return arc2(d);
+            })
+            d3.select("#tooltip").transition().duration(200).style("opacity", .9);
+            d3.select("#tooltip").html(toHtml(d))//tooltip位置-->
+                .style("left", (d3.event.pageX) + "px")
+                .style("top", (d3.event.pageY - 28) + "px");
+
+        })
+        .on("mouseout", function(d){
+            d3.select(this).select("path").transition().attr("d", function(d){
+                console.log(d);
+                return arc3(d);
+            })
+            d3.select("#tooltip").transition().duration(500).style("opacity", 0);
+        })
+    arcs.append("path")
+        .attr("fill", function(d, i) {
+            return color(i);
+        })
+        .attr("d", function(d) {
+            return arc3(d);
+        })
+    arcs.append()
+</script>
+<br>
+<br>
+<br>
+<br>
+<script>
+    var radius = 100,
+        padding = 10;
+
+    var color = d3.scale.ordinal()
+        .range(["#FF8040", "#FF8F59", "#FFAD86", "#FFCBB3"]);
+
+    var arc = d3.svg.arc()
+        .outerRadius(radius)
+        .innerRadius(radius - 30);
+
+
+    d3.csv("Selected_data_129.csv", function(error, data) {
+        if (error) throw error;
+
+        color.domain(d3.keys(data[0]).filter(function(key) { return key !== "部门"; }));
+
+        data.forEach(function(d) {
+            d.divs = color.domain().map(function(name) {
+                return {name: name, capital: +d[name]};
+            });
+        });
+
+        var pie = d3.layout.pie()
+            .sort(null)
+            .value(function(d) { return d.capital; });
+
+        var legend = d3.select("body").append("svg")
+            .attr("class", "legend")
+            .attr("width", radius * 2)
+            .attr("height", radius * 2)
+            .selectAll("g")
+            .data(color.domain().slice().reverse())
+            .enter().append("g")
+            .attr("transform", function(d, i) { return "translate(0," + i * 20 + ")"; });
+
+        legend.append("rect")
+            .attr("width", 18)
+            .attr("height", 18)
+            .style("fill", color);
+
+        legend.append("text")
+            .attr("x", 24)
+            .attr("y", 9)
+            .attr("dy", ".35em")
+            .text(function(d) { return d; });
+
+        var svg = d3.select("body").selectAll(".pie")
+            .data(data)
+            .enter().append("svg")
+            .attr("class", "pie")
+            .attr("width", radius * 2)
+            .attr("height", radius * 2)
+            .append("g")
+            .attr("transform", "translate(" + radius + "," + radius + ")");
+
+        svg.selectAll(".arc")
+            .data(function(d) { return pie(d.divs); })
+            .enter().append("path")
+            .attr("class", "arc")
+            .attr("d", arc)
+            .style("fill", function(d) { return color(d.data.name); });
+
+        svg.append("text")
+            .attr("dy", ".35em")
+            .style("text-anchor", "middle")
+            .text(function(d) { return d.部门; });
+
+    });
+</script>
+<br>
+<br>
+<br>
+<br>
+<p></p>
+<script>
+
+    var radius = 100,
+        padding = 10;
+
+    var color1 = d3.scale.ordinal()
+        .range(["#408080", "#5CADAD", "#A3D1D1"]);
+
+    var arc = d3.svg.arc()
+        .outerRadius(radius)
+        .innerRadius(radius - 30);
+
+    var pie1 = d3.layout.pie()
+        .sort(null)
+        .value(function(d) { return d.population; });
+
+    d3.csv("Selected_data_130.csv", function(error, data) {
+        if (error) throw error;
+
+        color1.domain(d3.keys(data[0]).filter(function(key) { return key !== "科学部"; }));
+
+        data.forEach(function(d) {
+            d.ages = color1.domain().map(function(name) {
+                return {name: name, population: +d[name]};
+            });
+        });
+
+        var legend1 = d3.select("p").append("svg")
+            .attr("class", "legend1")
+            .attr("width", radius * 2)
+            .attr("height", radius * 2)
+            .selectAll("g")
+            .data(color1.domain().slice().reverse())
+            .enter().append("g")
+            .attr("transform", function(d, i) { return "translate(0," + i * 20 + ")"; });
+
+        legend1.append("rect")
+            .attr("width", 18)
+            .attr("height", 18)
+            .style("fill", color1);
+
+        legend1.append("text")
+            .attr("x", 24)
+            .attr("y", 9)
+            .attr("dy", ".35em")
+            .text(function(d) { return d; });
+
+        var svg1 = d3.select("p").selectAll(".pie1")
+            .data(data)
+            .enter().append("svg")
+            .attr("class", "pie1")
+            .attr("width", radius * 2)
+            .attr("height", radius * 2)
+            .append("g")
+            .attr("transform", "translate(" + radius + "," + radius + ")");
+
+        svg1.selectAll(".arc")
+            .data(function(d) { return pie1(d.ages); })
+            .enter().append("path")
+            .attr("class", "arc")
+            .attr("d", arc)
+            .style("fill", function(d) { return color1(d.data.name); });
+
+        svg1.append("text")
+            .attr("dy", ".35em")
+            .style("text-anchor", "middle")
+            .text(function(d) { return d.科学部; });
+
+    });
+
+</script>
+</body>
