@@ -1,2 +1,2 @@
 # NSFC-Data-Visulization
-Data Visulization using HTML5&amp;JS
+Designed visulization plans based on 2018-NSFC data.
